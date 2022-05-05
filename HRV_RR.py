@@ -37,7 +37,7 @@ cutoff = np.quantile(np.abs(examined_segment),0.9)
 examined_segment[np.abs(examined_segment)<cutoff]=0
 
 # Load and preprocess data
-df_ecg = df["ECG1"]
+df_ecg = np.array(df["ECG1"])
 ecg = df_ecg[90000:508000]
 sf_ori = sampling_rate
 sf = 100
