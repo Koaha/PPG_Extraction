@@ -3,7 +3,7 @@ from mne.filter import filter_data, resample
 import scipy
 import numpy as np
 import pandas as pd
-from RRest.estimate_rr import CtO, Interpolate_RR
+from RRest.estimate_rr import CtO, Interpolate_RR,AR_RR
 
 train_data = np.loadtxt('dataset/Khoa1waves.asc', dtype=None, delimiter='\t',skiprows=2)
 df = pd.DataFrame(train_data,columns=["Time","ECG1","Pleth","Resp"])
@@ -25,5 +25,5 @@ start = 1000
 ecg = ecg[int(start*sf):int((start+window)*sf)]
 
 # resp = CtO.get_rr(ecg,sf)
-resp = Interpolate_RR.get_rr(ecg,sf)
+resp = AR_RR.get_rr(ecg,sf)
 print(resp)

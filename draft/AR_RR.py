@@ -38,7 +38,7 @@ cutoff = np.quantile(np.abs(examined_segment),0.9)
 examined_segment[np.abs(examined_segment)<cutoff]=0
 
 # Load and preprocess data
-df_ecg = df["ECG1"]
+df_ecg = np.array( df["ECG1"])
 ecg = df_ecg[90000:508000]
 sf_ori = sampling_rate
 sf = 100
@@ -69,6 +69,7 @@ ar_model = AutoReg(y, lags=10).fit()
 ar = ar_model.predict()
 
 # % obtain the poles of this AR
+ar = np.nan_to_num(ar,nan=0)
 r = np.roots(ar);
 
 print(r)
@@ -83,6 +84,5 @@ print(len(filtered_r))
 #
 # # % Determine the respiratory rate
 RR = 60*np.angle(np.max(filtered_r)) * fs_down /2/np.pi
-
-print(RR)	
+print(RR)
 
