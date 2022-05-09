@@ -21,36 +21,31 @@ def preprocess_signal(sig,fs,filter_type="bessel",highpass=5,lowpass=10):
 	filtered_segment[np.abs(filtered_segment)<cutoff]=0
 	return filtered_segment
 
-#======================================================================
-def get_rr(sig, fs, preprocess=True):
-	if preprocess:
-		sig = preprocess_signal(sig,fs)
-
-	#detrend & downsampling
-	detrend(sig,overwrite_data=True)
-	sig = resample(sig)
-
-	# apply power spectrum autoregression
-
-	nfft = 1024
-
-	psd_list = []
-	p_F = np.arange(0, 0.5, 1 / nfft)
-	for order in range(2,21):
-		# arburg(sig, order,NFFT=nfft, scale_by_freq=True)
-		p = pburg(sig, order,NFFT=nfft, scale_by_freq=True)
-		psd = p.psd
-		psd_list.append(psd)
-
-	p_F = np.arange(0,0.5,1/nfft)
-
-	spectral_power = np.median(np.array(psd_list),axis=0)
-	spectral_peak = find_spectral_peak(spectral_power,p_F)
-	return spectral_peak
-
 def find_spectral_peak(spectral_power, frequency):
 	cand_els = []
 	spectral_peaks = scipy.signal.find_peaks(spectral_power)
 	power_dev = spectral_power-np.min(spectral_power)
 
 	return len(spectral_peaks[0])
+
+#TODO
+def get_rr(sig,fs,order=7,preprocess=True):
+    if preprocess:
+        sig = preprocess_signal(sig,fs)
+    detrend(sig,overwrite_data=True)
+    sig = resample(sig)
+
+    ar = arburg(sig, order)
+    if len(ar) > 1:
+        poles = np.roots(ar[0])
+    angles = np.angle(poles) * (fs/(2*np.pi))*60 #in bpm
+    # find rel poles
+    # check if angle in the positive part - see the paper
+    rr_range = [np.pi*-0.25, np.pi*0.25]
+    rel_pole_els = angles[np.where((angles> rr_range[0])& (angles < rr_range[1]))]
+
+    model_angle = np.angle(rel_pole_els)
+    model_pole_mag = np.abs(poles)
+    #select the pole with the greatest magnitude as the respiratory pole
+
+    return
