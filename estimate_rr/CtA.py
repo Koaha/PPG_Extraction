@@ -8,6 +8,7 @@ from RRest.common.rpeak_detection import (
 	PeakDetector
 	)
 from RRest.preprocess.band_filter import BandpassFilter
+from scipy import signal
 
 def preprocess_signal(sig,fs,filter_type="bessel",highpass=5,lowpass=10):
 	#Prepare and filter signal
@@ -28,29 +29,17 @@ def get_troughs(sig, rr_index):
     return np.array(trough_indices)
 
 def get_rr(sig, fs, preprocess=True):
+
+	# Step 1 preprocess with butterworth filter - 0.1-0.5 -> depend on the device
 	if preprocess:
 		sig = preprocess_signal(sig,fs)
-	# R-R peaks detection
-	rr, _ = find_peaks(sig, distance=40, height=0.5)
-	# remove the local minimum
-	unified_rr = np.delete(rr, np.argmin(sig[rr]))
-	troughs = get_troughs(sig, unified_rr)
 
-	# find relevant peaks and troughs
-	q3 = np.quantile(sig[rr], 0.75)
-	thresh = q3 * 0.9
+	# Step 2
+	local_max = signal.argrelmax(sig,order=2) # if the diff is greater than 2 continuous points
+	local_min = signal.argrelmin(sig,order=2)
 
-	rel_peaks = unified_rr[sig[unified_rr] > thresh]
-	rel_troughs = troughs[sig[troughs] < 0]
+	# Step 3 define the local max threshold by taking the 0.75 quantile
+	max_threshold = np.quantile(local_max,0.75)*0.2
 
-	# find valid breathing cycles. start with  a peak.
-	cycle_duration = []
-	for i, j in zip(rel_peaks[:-2], rel_peaks[1:]):
-		# cycles_rel_troughs = rel_troughs[(rel_troughs > i) and (rel_troughs<j) ]
-		cycles_rel_troughs = rel_troughs[np.where((rel_troughs > i) & (rel_troughs < j))]
-		if len(cycles_rel_troughs) == 1:
-			cycle_duration.append((j - i) * 1000 / fs)
-
-	average_breath_duration = np.mean(cycle_duration)
-	resp_res = 60 / average_breath_duration * 1000
-	return resp_res
+	print(max_threshold)
+	return

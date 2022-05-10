@@ -25,5 +25,5 @@ start = 1000
 ecg = ecg[int(start*sf):int((start+window)*sf)]
 
 # resp = CtO.get_rr(ecg,sf)
-resp = ARP.get_rr(ecg,sf)
+resp = CtO.get_rr(ecg,sf)
 print(resp)
