@@ -5,7 +5,7 @@ import numpy as np
 from scipy import signal
 from RRest.preprocess.band_filter import BandpassFilter
 
-def preprocess_signal(sig,fs,filter_type="butterworth",highpass=0.1,lowpass=0.5,degree =10,cutoff=False,cutoff_quantile=0.9):
+def preprocess_signal(sig,fs,filter_type="butterworth",highpass=0.1,lowpass=0.5,degree =1,cutoff=False,cutoff_quantile=0.9):
 	#Prepare and filter signal
 	hp_cutoff_order = [highpass, degree]
 	lp_cutoff_order = [lowpass, degree]
@@ -55,31 +55,31 @@ def preprocess_signal(sig,fs,filter_type="butterworth",highpass=0.1,lowpass=0.5,
 def get_rr(sig,fs,preprocess=True):
 	# Step 1 preprocess with butterworth filter - 0.1-0.5 -> depend on the device
 	if preprocess:
-		pro_sig = preprocess_signal(sig, fs)
-		# sig = preprocess_signal(sig, fs)
-	fig = go.Figure()
-	fig.add_trace(go.Scatter(x=np.arange(len(sig)),y=sig,line=dict(color='blue')))
-	fig.add_trace(go.Scatter(x=np.arange(len(pro_sig)), y=pro_sig,line=dict(color='crimson')))
-	fig.show()
+		# pro_sig = preprocess_signal(sig, fs)
+		sig = preprocess_signal(sig, fs)
+	# fig = go.Figure()
+	# fig.add_trace(go.Scatter(x=np.arange(len(sig)),y=sig,line=dict(color='blue')))
+	# fig.add_trace(go.Scatter(x=np.arange(len(pro_sig)), y=pro_sig,line=dict(color='crimson')))
+	# fig.show()
 	# Step 2
-	local_max = signal.argrelmax(sig, order=2)[0] # if the diff is greater than 2 continuous points
-	local_min = signal.argrelmin(sig, order=2)[0]
+	local_max = signal.argrelmax(sig, order=1)[0] # if the diff is greater than 2 continuous points
+	local_min = signal.argrelmin(sig, order=1)[0]
 
 	# Step 3 define the local max threshold by taking the 0.75 quantile
 	max_threshold = np.quantile(sig[local_max], 0.75) * 0.2
 
 	#Step 4 find the valid resp cycle
 	resp_markers = get_valid_rr(sig,local_min,local_max,max_threshold)
-	print(max_threshold)
+	print(len(resp_markers))
 
 def get_valid_rr(sig,local_min,local_max,thres):
 	extrema_indices = np.sort(list(local_min)+list(local_max))
 	resp_markers = []
-	for i in range(len(local_max)-1):
-		if (sig[i] > thres) and (sig[i+1]>thres):
-			count_extrema_in_range = np.where(extrema_indices==local_max[i+1])[0][0]-\
-									np.where(extrema_indices==local_max[i])[0][0]
-			if (count_extrema_in_range) == 2 and \
-				sig[extrema_indices[np.where(extrema_indices==local_max[i])[0][0]+1]]<0:
-				resp_markers.append((i,i+1))
+	rel_peaks = local_max[sig[local_max]>thres]
+	rel_troughs = local_min[sig[local_min]<0]
+	for i in range(len(rel_peaks)-1):
+		cyc_rel_troughs = (np.where((rel_troughs > rel_peaks[i]) & \
+						   (rel_troughs < rel_peaks[i + 1])))[0]
+		if len(cyc_rel_troughs) == 1:
+			resp_markers.append((rel_peaks[i], rel_peaks[i + 1]))
 	return resp_markers

@@ -14,12 +14,15 @@ df_ecg = np.array(df["ECG1"])
 ecg = df_ecg[90000:508000]
 sf_ori = 300
 sf = 100
-# sf = 100
-dsf = sf / sf_ori
-ecg = resample(ecg, dsf)
-ecg = filter_data(ecg, sf, 2, 30, verbose=0)
 
-# Select only a 20 sec window
+dsf = sf / sf_ori
+ecg_resample = resample(ecg, dsf)
+ecg = resample(ecg, dsf)
+
+# filter is used later in the estimation
+# ecg = filter_data(ecg, sf, 2, 30, verbose=0)
+
+# Select only a 60 sec window - with the frequency is sf = 100
 window = 60
 start = 1000
 ecg = ecg[int(start*sf):int((start+window)*sf)]
