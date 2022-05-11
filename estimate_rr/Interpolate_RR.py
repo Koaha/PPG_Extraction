@@ -3,16 +3,18 @@ from scipy.signal import detrend, find_peaks
 import numpy as np
 from RRest.preprocess.band_filter import BandpassFilter
 
-def preprocess_signal(sig,fs,filter_type="bessel",highpass=5,lowpass=10):
+def preprocess_signal(sig,fs,filter_type="butterworth",highpass=0.1,lowpass=0.5,degree =1,cutoff=False,cutoff_quantile=0.9):
 	#Prepare and filter signal
-	hp_cutoff_order = [highpass, 1]
-	lp_cutoff_order = [lowpass, 1]
+	hp_cutoff_order = [highpass, degree]
+	lp_cutoff_order = [lowpass, degree]
 	filt = BandpassFilter(band_type=filter_type, fs=fs)
 	filtered_segment = filt.signal_highpass_filter(sig, cutoff=hp_cutoff_order[0], order=hp_cutoff_order[1])
 	filtered_segment = filt.signal_lowpass_filter(filtered_segment, cutoff=lp_cutoff_order[0], order=lp_cutoff_order[1])
-	cutoff = np.quantile(np.abs(filtered_segment),0.9)
-	filtered_segment[np.abs(filtered_segment)<cutoff]=0
+	if cutoff:
+		cutoff = np.quantile(np.abs(filtered_segment),cutoff_quantile)
+		filtered_segment[np.abs(filtered_segment)<cutoff]=0
 	return filtered_segment
+
 
 # Interpolate and compute HR
 def interp_cubic_spline(rri, sf_up=4):
