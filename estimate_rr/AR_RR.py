@@ -2,6 +2,7 @@ import numpy as np
 from RRest.preprocess.band_filter import BandpassFilter
 from mne.filter import filter_data, resample
 from statsmodels.tsa.ar_model import AutoReg
+from spectrum import arburg
 
 def preprocess_signal(sig,fs,filter_type="butterworth",highpass=0.1,lowpass=0.5,degree =1,cutoff=False,cutoff_quantile=0.9):
 	#Prepare and filter signal
@@ -18,6 +19,7 @@ def preprocess_signal(sig,fs,filter_type="butterworth",highpass=0.1,lowpass=0.5,
 
 #======================================================================
 def get_rr(sig, fs, preprocess=True):
+    rr = {}
     if preprocess:
         sig = preprocess_signal(sig,fs)
     sf_ori = fs
@@ -35,14 +37,18 @@ def get_rr(sig, fs, preprocess=True):
 
     # % Applying the Autoregressive Model method model y using AR order 10
     # a = arburg(y, 10);
-    ar_model = AutoReg(y, lags=10).fit()
-    ar = ar_model.predict()
+    # ar_model = AutoReg(y, lags=10).fit()
+    # ar = ar_model.predict()
 
     # % obtain the poles of this AR
-    ar = np.nan_to_num(ar,nan=0)
-    r = np.roots(ar);
-
+    ar = arburg(y,10)
+    # ar = np.nan_to_num(ar,nan=0)
+    # r = np.roots(ar[0]);
+    r = ar[0]
     print(r)
+    real_part = np.real(r)
+    imaginary_part = np.imag(r)
+    angles = np.angle(r)
     filtered_r = [i for i in r if (np.angle(i)>=10/60*2*np.pi/fs_down)]
     filtered_r = [i for i in filtered_r if (np.angle(i)<25/60*2*np.pi/fs_down)]
     print(len(filtered_r))
@@ -54,6 +60,7 @@ def get_rr(sig, fs, preprocess=True):
     #
     # # % Determine the respiratory rate
     RR = 60*np.angle(np.max(filtered_r)) * fs_down /2/np.pi
+
     print(RR)
     return RR
 
