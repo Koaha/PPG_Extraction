@@ -62,6 +62,8 @@ def get_rr(sig,fs,preprocess=True):
     final_troughs = np.intersect1d(local_min[rel_troughs_indices], rel_extrema)
     return final_peaks
 
+
+
 def get_sign(extrema_indices,trough_indices,peak_indices):
     if extrema_indices in trough_indices:
         return -1
