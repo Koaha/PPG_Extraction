@@ -3,5 +3,5 @@ dataset/*
 rr1/*
 bidmc_csv/*
 .idea/*
-*__pycache__/*
+RRest/__pycache__/*
 .pytest_cache/*
