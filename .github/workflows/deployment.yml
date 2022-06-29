@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.6","3.7", "3.8", "3.9", "3.10"]
+        python-version: ["3.6","3.7"]
 
     steps:
     - uses: actions/checkout@v3
@@ -34,7 +34,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest and check code coverage
       run: |
-        pytest --cov=./ --cov-report=xml
+        pytest --cov=./coverage/reports/ --cov-report=xml
         curl -Os https://uploader.codecov.io/latest/linux/codecov chmod +x codecov ./codecov
 #        coverage run -m pytest
     - name: Coverage report
