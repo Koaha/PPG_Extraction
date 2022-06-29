@@ -7,7 +7,7 @@ from mne.filter import filter_data, resample
 from scipy.signal import detrend, find_peaks
 import numpy as np
 import pandas as pd
-from preprocess.band_filter import BandpassFilter
+from RRest.preprocess.band_filter import BandpassFilter
 
 train_data = np.loadtxt('dataset/Khoa1waves.asc', dtype=None, delimiter='\t', skiprows=2)
 df = pd.DataFrame(train_data, columns=["Time", "ECG1", "Pleth", "Resp"])

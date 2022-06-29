@@ -1,10 +1,12 @@
-from setuptools import setup
+from setuptools import setup, find_packages
+from pip._internal.req import parse_requirements
 
 setup(
     name='RRest',
     version='1.0',
-    packages=['common', 'fusion', 'preprocess', 'estimate_rr', 'time_domain', 'frequency_domain'],
+    packages=find_packages(include=['RRest.*']),
     url='https://github.com/Koaha/RRest',
+    install_reqs = parse_requirements('requirements.txt', session='hack'),
     python_requires='>=3.6',
     license='MIT',
     author='Koha',

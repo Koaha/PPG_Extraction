@@ -1,7 +1,7 @@
 from scipy.signal import resample, find_peaks, detrend
 from scipy.interpolate import splrep, splev
 import numpy as np
-from preprocess.band_filter import BandpassFilter
+from RRest.preprocess import BandpassFilter
 
 
 class rr_base_time():
