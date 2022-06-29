@@ -5,3 +5,4 @@ bidmc_csv/*
 .idea/*
 RRest/__pycache__/*
 .pytest_cache/*
+RRest.egg-info/*
