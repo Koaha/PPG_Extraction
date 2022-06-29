@@ -7,3 +7,4 @@ RRest/__pycache__/*
 .pytest_cache/*
 RRest.egg-info/*
 .coverage
+coverage.xml
