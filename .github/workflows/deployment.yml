@@ -34,9 +34,9 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest and check code coverage
       run: |
-        curl -Os https://uploader.codecov.io/latest/linux/codecov chmod +x codecov ./codecov
-        pytest --cov=./ --cov-report=xml
 #        curl -Os https://uploader.codecov.io/latest/linux/codecov chmod +x codecov ./codecov
+        pytest --cov=./ --cov-report=xml
+        curl -Os https://uploader.codecov.io/latest/linux/codecov chmod +x codecov ./codecov
 #        coverage run -m pytest
     - name: Coverage report
       run: |
