@@ -1,22 +1,19 @@
-from statsmodels.tsa.ar_model import AutoReg
-from scipy.signal import resample
+from scipy.signal import resample, find_peaks, detrend
+from scipy.interpolate import splrep, splev
 import numpy as np
-from common.rpeak_detection import (
-	PeakDetector
-	)
 from preprocess.band_filter import BandpassFilter
 
 
 class rr_base_time():
-
     HRV = 0
 
     def __init__(self):
         return
-    def estimate_rr(self, s, signal_type = "PPG", fs=224,dsf= 100,method=HRV):
+
+    def estimate_rr(self, s, signal_type="PPG", fs=224, dsf=100, method=HRV):
         hp_cutoff_order = [5, 1]
         lp_cutoff_order = [10, 1]
-        primary_peakdet = 7
+        # primary_peakdet = 7
         filt = BandpassFilter(band_type='bessel', fs=fs)
         filtered_segment = filt.signal_highpass_filter(s, cutoff=hp_cutoff_order[0], order=hp_cutoff_order[1])
         filtered_segment = filt.signal_lowpass_filter(filtered_segment, cutoff=lp_cutoff_order[0],
@@ -27,7 +24,7 @@ class rr_base_time():
         # sf = 100
         dsf = sf / sf_ori
         ecg = resample(filtered_segment, dsf)
-        ecg = filter_data(ecg, sf, 2, 30, verbose=0)
+        # ecg = filter_data(ecg, sf, 2, 30, verbose=0)
 
         # Select only a 20 sec window
         window = 60
@@ -84,8 +81,8 @@ class rr_base_time():
 
         hp_cutoff_order = [8, 1]
         lp_cutoff_order = [60, 1]
-        primary_peakdet = 7
-        filt = BandpassFilter(band_type='bessel', fs=sampling_rate)
+        # primary_peakdet = 7
+        filt = BandpassFilter(band_type='bessel', fs=fs)
         filtered_segment = filt.signal_highpass_filter(edr, cutoff=hp_cutoff_order[0], order=hp_cutoff_order[1])
         filtered_segment = filt.signal_lowpass_filter(filtered_segment, cutoff=lp_cutoff_order[0],
                                                       order=lp_cutoff_order[1])
@@ -95,7 +92,7 @@ class rr_base_time():
 
         # Convert to seconds
         resp_peaks = resp_peaks
-        resp_peaks_diff = np.diff(resp_peaks) / sf_up
+        # resp_peaks_diff = np.diff(resp_peaks) / sf_up
 
         print(resp_peaks)
         RR = 60 / np.diff(resp_peaks)
@@ -106,8 +103,4 @@ class rr_base_time():
         # _ = plt.title('ECG derived respiration')
         # plt.show()
 
-
         return RR
-
-
-

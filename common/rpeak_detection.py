@@ -1,11 +1,13 @@
-"""R peak detection approaches for PPG and ECG"""
+"""R peak detection approaches for PPG and ECG
+
+"""
+
 import numpy as np
 from sklearn.cluster import KMeans
 from scipy import signal
 
-from preprocess.band_filter import BandpassFilter
-from common.generate_template import ecg_dynamic_template
-from common.utils import get_moving_average
+from RRest.common.band_filter import BandpassFilter
+from RRest.common.generate_template import ecg_dynamic_template
 import warnings
 from ecgdetectors import Detectors, panPeakDetect
 
@@ -16,6 +18,20 @@ SLOPE_SUM_METHOD = 4
 MOVING_AVERAGE_METHOD = 5
 DEFAULT_SCIPY = 6
 BILLAUER_METHOD = 7
+
+HAMILTON = 1
+CHRISTOV = 2
+ENGZEE = 3
+SWT = 4
+MVA = 5
+MTEMP = 6
+PAN_TOMPKINS = 7
+
+
+def get_moving_average(q, w):
+    q_padded = np.pad(q, (w // 2, w - 1 - w // 2), mode='edge')
+    convole = np.convolve(q_padded, np.ones(w) / w, 'valid')
+    return convole
 
 
 class PeakDetector:
@@ -31,12 +47,13 @@ class PeakDetector:
 
 
     """
+
     def __init__(self, wave_type='ppg', fs=100):
         self.clusters = 2
         self.wave_type = wave_type
         self.fs = fs
 
-    def ecg_detector(self, s, detector_type="pan_tompkins"):
+    def ecg_detector(self, s, detector_type=PAN_TOMPKINS, get_nadir=False):
         """Expose
 
         ECG peak detector from the github
@@ -68,29 +85,10 @@ class PeakDetector:
 
 
         """
-        # if self.wave_type == 'ppg':
-        #     warnings.warn("A ECG detectors is using on PPG waveform. "
-        #                   "Output may produce incorrect result")
-        # detector = Detectors(self.fs)
-        # if detector_type == 'hamilton':
-        #     res = detector.hamilton_detector(s)
-        # elif detector_type == 'christov':
-        #     res = detector.christov_detector(s)
-        # elif detector_type == 'engzee':
-        #     res = detector.engzee_detector(s)
-        # elif detector_type == 'swt':
-        #     res = detector.swt_detector(s)
-        # elif detector_type == 'mva':
-        #     res = detector.two_average_detector(s)
-        # elif detector_type == 'mtemp':
-        #     res = self.matched_filter_detector(s)
-        # else:
-        #     res = detector.pan_tompkins_detector(s)
-        # return np.array(res)
-        f1 = 5/self.fs
-        f2 = 15/self.fs
+        f1 = 5 / self.fs
+        f2 = 15 / self.fs
 
-        b, a = signal.butter(1, [f1*2, f2*2], btype='bandpass')
+        b, a = signal.butter(1, [f1 * 2, f2 * 2], btype='bandpass')
 
         filtered_ecg = signal.lfilter(b, a, s)
         # bandpass = BandpassFilter()
@@ -98,34 +96,56 @@ class PeakDetector:
         # filtered_ecg = bandpass.signal_highpass_filter(filtered_ecg,f1)
 
         diff = np.diff(filtered_ecg).reshape(-1)
-        squared = diff**2
+        squared = diff ** 2
 
-        N = int(0.12*self.fs)
+        N = int(0.12 * self.fs)
 
         # compute moving average
-        mwa = get_moving_average(squared,N)
+        mwa = get_moving_average(squared, N)
 
-        mwa[:int(0.2*self.fs)] = 0
+        mwa[:int(0.2 * self.fs)] = 0
 
-        mwa_peaks = panPeakDetect(mwa, self.fs)
+        if self.wave_type == 'ppg':
+            warnings.warn("A ECG detectors is using on PPG waveform. "
+                          "Output may produce incorrect result")
+        detector = Detectors(self.fs)
+        if detector_type == HAMILTON:
+            mwa_peaks = detector.hamilton_detector(s)
+        elif detector_type == CHRISTOV:
+            mwa_peaks = detector.christov_detector(s)
+        elif detector_type == ENGZEE:
+            mwa_peaks = detector.engzee_detector(s)
+        elif detector_type == SWT:
+            mwa_peaks = detector.swt_detector(s)
+        elif detector_type == MVA:
+            mwa_peaks = detector.two_average_detector(s)
+        elif detector_type == MTEMP:
+            mwa_peaks = detector.matched_filter_detector(s)
+        else:
+            mwa_peaks = detector.pan_tompkins_detector(s)
+            # mwa_peaks = panPeakDetect(mwa, self.fs)
 
+        if len(mwa_peaks) == 0:
+            return [], []
         # append the first and the last
-        normal_beat_length = (self.fs * (60/100))/2
-        if mwa_peaks[0] > normal_beat_length/2:
-            mwa_peaks = np.hstack((0,mwa_peaks))
-        if len(s)-mwa_peaks[-1]>normal_beat_length/2:
-            mwa_peaks = np.hstack((mwa_peaks,len(s)))
+        normal_beat_length = (self.fs * (60 / 100)) / 2
+        if mwa_peaks[0] > normal_beat_length / 2:
+            mwa_peaks = np.hstack((0, mwa_peaks))
+        if len(s) - mwa_peaks[-1] > normal_beat_length / 2:
+            mwa_peaks = np.hstack((mwa_peaks, len(s)))
         # compute the segment points
         trough_list = []
         nadir_min_list = []
-        for idx in range(len(mwa_peaks)-1):
+        for idx in range(len(mwa_peaks) - 1):
             peak_idx = mwa_peaks[idx]
-            next_peak_idx = mwa_peaks[idx+1]
+            next_peak_idx = mwa_peaks[idx + 1]
             interval = mwa[peak_idx:next_peak_idx]
-            interval_diff = np.diff(interval,3)
-            trough_list.append(np.argmin(interval_diff)+1+peak_idx)
-            nadir_min_list.append(np.argmin(interval)+peak_idx)
-        return mwa_peaks,trough_list,nadir_min_list
+            interval_diff = np.diff(interval, 3)
+            trough_list.append(np.argmin(interval_diff) + 1 + peak_idx)
+            nadir_min_list.append(np.argmin(interval) + peak_idx)
+        if get_nadir:
+            return mwa_peaks, trough_list, nadir_min_list
+        return mwa_peaks, trough_list
 
     def ppg_detector(self, s, detector_type=ADAPTIVE_THRESHOLD,
                      clusterer="kmean", preprocess=False, cubing=False):
@@ -166,7 +186,7 @@ class PeakDetector:
         try:
             if detector_type == CLUSTERER_METHOD:
                 peak_finalist, trough_finalist = \
-                    self.detect_peak_trough_clusterer(s)
+                    self.detect_peak_trough_clusterer(s, clusterer=clusterer)
             elif detector_type == SLOPE_SUM_METHOD:
                 peak_finalist, trough_finalist = \
                     self.detect_peak_trough_slope_sum(s)
@@ -249,7 +269,7 @@ class PeakDetector:
         mean_diff = mean_diff.reshape(-1, 1)
         return np.hstack((amplitude, mean_diff))
 
-    def detect_peak_trough_clusterer(self, s, clusterer='kmean', **kwargs):
+    def detect_peak_trough_clusterer(self, s, **kwargs):
         """handy
         Method 1: using clustering technique
 
@@ -307,7 +327,7 @@ class PeakDetector:
 
     def get_ROI(self, s, mva):
         """
-
+        handy
         Parameters
         ----------
         s :
@@ -550,8 +570,8 @@ class PeakDetector:
         through_finalist = []
 
         # Bandpass filter
-        #filter = BandpassFilter()
-        #S = filter.signal_highpass_filter(s, 0.5, fs=100)
+        # filter = BandpassFilter()
+        # S = filter.signal_highpass_filter(s, 0.5, fs=100)
         # S = butter_lowpass_filter(S,8,fs=100)
         # S = s
         # Clipping the output by keeping the signal
@@ -606,11 +626,10 @@ class PeakDetector:
 
         return peak_finalist, through_finalist
 
-      
     def detect_peak_trough_billauer(self, s):
         """
         Converted from MATLAB script at http://billauer.co.il/peakdet.html
-        
+
 
         Returns two arrays
 
@@ -649,7 +668,7 @@ class PeakDetector:
 
 
         """
-        #Scale data
+        # Scale data
         s_min = np.min(s)
         s_max = np.max(s)
         s = np.interp(s, (s_min, s_max), (-1, +1))
@@ -675,13 +694,13 @@ class PeakDetector:
                 mn = this
                 mnpos = x[i]
             if lookformax:
-                if this < mx-delta:
+                if this < mx - delta:
                     maxtab.append(mxpos)
                     mn = this
                     mnpos = x[i]
                     lookformax = False
             else:
-                if this > mn+delta:
+                if this > mn + delta:
                     mintab.append(mnpos)
                     mx = this
                     mxpos = x[i]

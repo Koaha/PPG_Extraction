@@ -1,7 +1,8 @@
 import numpy as np
 from scipy import signal
 
-def tapering(signal_data,window=None,shift_min_to_zero=True):
+
+def tapering(signal_data, window=None, shift_min_to_zero=True):
     """
     expose
     Pin the leftmost and rightmost signal to the zero baseline
@@ -12,13 +13,14 @@ def tapering(signal_data,window=None,shift_min_to_zero=True):
     :return: the tapered signal
     """
     if shift_min_to_zero:
-        signal_data = signal_data-np.min(signal_data)
-    if window == None:
-        window = signal.windows.tukey(len(signal_data),0.9)
+        signal_data = signal_data - np.min(signal_data)
+    if window is None:
+        window = signal.windows.tukey(len(signal_data), 0.9)
     signal_data_tapered = np.array(window) * (signal_data)
     return np.array(signal_data_tapered)
 
-def smooth(x,window_len=5,window='flat'):
+
+def smooth(x, window_len=5, window='flat'):
     """
     expose
     :param x:
@@ -28,19 +30,18 @@ def smooth(x,window_len=5,window='flat'):
     """
     x = np.array(x)
     if x.ndim != 1:
-        raise(ValueError, "smooth only accepts 1 dimension arrays.")
+        raise (ValueError, "smooth only accepts 1 dimension arrays.")
 
     if x.size < window_len:
-        raise(ValueError, "Input vector needs to be bigger than window size.")
+        raise (ValueError, "Input vector needs to be bigger than window size.")
 
     if window_len < 3:
         return x
 
-    if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
-        raise(ValueError, "Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
+    if window not in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
+        raise (ValueError, "Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
 
-    s = np.r_[x[window_len - 1:0:-1], x, x[-2:-window_len - 1:-1]]
-    # print(len(s))
+    # s = np.r_[x[window_len - 1:0:-1], x, x[-2:-window_len - 1:-1]]
     if window == 'flat':  # moving average
         w = np.ones(window_len, 'd')
     else:
@@ -50,7 +51,8 @@ def smooth(x,window_len=5,window='flat'):
     y = np.convolve(w / w.sum(), x, mode='same')
     return y
 
-def scale_pattern(s,window_size):
+
+def scale_pattern(s, window_size):
     """
     expose
     This method is ONLY used for small segment to compare with the template.
@@ -64,14 +66,14 @@ def scale_pattern(s,window_size):
     scale_res = []
     if len(s) == window_size:
         return np.array(s)
-    if len(s)<window_size:
-        #spanning the signal
-        span_ratio = (window_size/len(s))
-        for idx in range(0,int(window_size)):
-            if idx-span_ratio<0:
+    if len(s) < window_size:
+        # spanning the signal
+        span_ratio = (window_size / len(s))
+        for idx in range(0, int(window_size)):
+            if idx - span_ratio < 0:
                 scale_res.append(s[0])
             else:
-                scale_res.append(np.mean(s[int(idx/span_ratio)]))
+                scale_res.append(np.mean(s[int(idx / span_ratio)]))
     else:
         scale_res = squeeze_template(s, window_size)
 
@@ -80,7 +82,8 @@ def scale_pattern(s,window_size):
     smmoothed_scale_res = smooth(scale_res)
     return np.array(smmoothed_scale_res)
 
-def squeeze_template(s,width):
+
+def squeeze_template(s, width):
     """
     handy
     :param s:
@@ -93,14 +96,14 @@ def squeeze_template(s,width):
     out_res = []
     for i in range(int(width)):
         if i == 0:
-            centroid = (total_len/width)*i
+            centroid = (total_len / width) * i
         else:
-            centroid = (total_len/width)*i
-        left_point = int(centroid)-span_unit
-        right_point = int(centroid+span_unit)
-        if left_point <0:
-            left_point=0
-        if right_point >len(s):
-            left_point=len(s)
+            centroid = (total_len / width) * i
+        left_point = int(centroid) - span_unit
+        right_point = int(centroid + span_unit)
+        if left_point < 0:
+            left_point = 0
+        if right_point > len(s):
+            left_point = len(s)
         out_res.append(np.mean(s[left_point:right_point]))
     return np.array(out_res)

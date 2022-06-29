@@ -2,26 +2,27 @@ from statsmodels.tsa.ar_model import AutoReg
 from scipy.signal import resample
 import numpy as np
 
-class rr_base_freq():
 
+class rr_base_freq():
     AUTOREGRESSIVE = 0
 
     def __init__(self):
         return
-    def estimate_rr(self, s, signal_type = "PPG", fs=224,dsf= 100,method=AUTOREGRESSIVE):
+
+    def estimate_rr(self, s, signal_type="PPG", fs=224, dsf=100, method=AUTOREGRESSIVE):
         # resample the time series @ 2Hz
-        fs_down = 2;
+        fs_down = 2
         y = resample(s, dsf)
         # y = interp1(1:numel(thorax), thorax, 1: 1 / 2:20, 'spline');
-        y = y - np.mean(y);
+        y = y - np.mean(y)
 
         # % Applying the Autoregressive Model method model y using AR order 10
-        # a = arburg(y, 10);
+        # a = arburg(y, 10)
         ar_model = AutoReg(y, lags=10).fit()
         ar = ar_model.predict()
 
         # % obtain the poles of this AR
-        r = np.roots(ar);
+        r = np.roots(ar)
 
         print(r)
         filtered_r = [i for i in r if (np.angle(i) >= 10 / 60 * 2 * np.pi / fs_down)]
@@ -37,6 +38,3 @@ class rr_base_freq():
         RR = 60 * np.angle(np.max(filtered_r)) * fs_down / 2 / np.pi
 
         return RR
-
-
-

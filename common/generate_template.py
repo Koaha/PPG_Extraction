@@ -7,7 +7,40 @@ from scipy import signal
 import scipy
 from scipy.signal import argrelextrema
 from scipy.integrate import solve_ivp
-from preprocess.preprocess_signal import squeeze_template
+
+
+def squeeze_template(s, width):
+    """handy
+
+    Parameters
+    ----------
+    s :
+        param width:
+    width :
+
+
+    Returns
+    -------
+
+
+    """
+    s = np.array(s)
+    total_len = len(s)
+    span_unit = 2
+    out_res = []
+    for i in range(int(width)):
+        if i == 0:
+            centroid = (total_len / width) * i
+        else:
+            centroid = (total_len / width) * i
+        left_point = int(centroid) - span_unit
+        right_point = int(centroid + span_unit)
+        if left_point < 0:
+            left_point = 0
+        if right_point > len(s):
+            left_point = len(s)
+        out_res.append(np.mean(s[left_point:right_point]))
+    return np.array(out_res)
 
 
 def ppg_dual_double_frequency_template(width):
@@ -20,8 +53,7 @@ def ppg_dual_double_frequency_template(width):
     having diastolic peak at the low position
     """
     t = np.linspace(0, 1, width, False)  # 1 second
-    sig = np.sin(2 * np.pi * 2 * t - np.pi / 2) + \
-        np.sin(2 * np.pi * 1 * t - np.pi / 6)
+    sig = np.sin(2 * np.pi * 2 * t - np.pi / 2) + np.sin(2 * np.pi * 1 * t - np.pi / 6)
     sig_scale = MinMaxScaler().fit_transform(np.array(sig).reshape(-1, 1))
     return sig_scale.reshape(-1)
 
@@ -98,8 +130,7 @@ def ppg_nonlinear_dynamic_system_template(width):
     rescale_signal = squeeze_template(s, width)
 
     window = signal.windows.cosine(len(rescale_signal), 0.5)
-    signal_data_tapered = np.array(window) * \
-        (rescale_signal - min(rescale_signal))
+    signal_data_tapered = np.array(window) * (rescale_signal - min(rescale_signal))
 
     out_scale = MinMaxScaler().fit_transform(
         np.array(signal_data_tapered).reshape(-1, 1))
@@ -268,10 +299,8 @@ def rr_process(flo, fhi, flostd, fhistd, lfhfratio, hrmean, hrstd, sfrr, n):
     dw1 = w - w1
     dw2 = w - w2
 
-    Hw1 = sig1 * np.exp(-0.5 * (dw1 / c1) ** 2) / \
-        np.sqrt(2 * np.pi * np.power(c1, 2))
-    Hw2 = sig2 * np.exp(-0.5 * (dw2 / c2) ** 2) / \
-        np.sqrt(2 * np.pi * np.power(c2, 2))
+    Hw1 = sig1 * np.exp(-0.5 * (dw1 / c1) ** 2) / np.sqrt(2 * np.pi * np.power(c1, 2))
+    Hw2 = sig2 * np.exp(-0.5 * (dw2 / c2) ** 2) / np.sqrt(2 * np.pi * np.power(c2, 2))
     Hw = Hw1 + Hw2
     """
     An RR-interval time series T(t)

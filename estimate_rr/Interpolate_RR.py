@@ -3,22 +3,24 @@ from scipy.signal import detrend, find_peaks
 import numpy as np
 from RRest.preprocess.band_filter import BandpassFilter
 
-def preprocess_signal(sig,fs,filter_type="butterworth",highpass=0.1,lowpass=0.5,degree =1,cutoff=False,cutoff_quantile=0.9):
-	#Prepare and filter signal
-	hp_cutoff_order = [highpass, degree]
-	lp_cutoff_order = [lowpass, degree]
-	filt = BandpassFilter(band_type=filter_type, fs=fs)
-	filtered_segment = filt.signal_highpass_filter(sig, cutoff=hp_cutoff_order[0], order=hp_cutoff_order[1])
-	filtered_segment = filt.signal_lowpass_filter(filtered_segment, cutoff=lp_cutoff_order[0], order=lp_cutoff_order[1])
-	if cutoff:
-		cutoff = np.quantile(np.abs(filtered_segment),cutoff_quantile)
-		filtered_segment[np.abs(filtered_segment)<cutoff]=0
-	return filtered_segment
+
+def preprocess_signal(sig, fs, filter_type="butterworth", highpass=0.1, lowpass=0.5, degree=1, cutoff=False,
+                      cutoff_quantile=0.9):
+    # Prepare and filter signal
+    hp_cutoff_order = [highpass, degree]
+    lp_cutoff_order = [lowpass, degree]
+    filt = BandpassFilter(band_type=filter_type, fs=fs)
+    filtered_segment = filt.signal_highpass_filter(sig, cutoff=hp_cutoff_order[0], order=hp_cutoff_order[1])
+    filtered_segment = filt.signal_lowpass_filter(filtered_segment, cutoff=lp_cutoff_order[0], order=lp_cutoff_order[1])
+    if cutoff:
+        cutoff = np.quantile(np.abs(filtered_segment), cutoff_quantile)
+        filtered_segment[np.abs(filtered_segment) < cutoff] = 0
+    return filtered_segment
 
 
 # Interpolate and compute HR
 def interp_cubic_spline(rri, sf_up=4):
-	"""
+    """
     Interpolate R-R intervals using cubic spline.
     Taken from the `hrv` python package by Rhenan Bartels.
 
@@ -34,16 +36,17 @@ def interp_cubic_spline(rri, sf_up=4):
     rri_interp : np.array
         Upsampled/interpolated R-R peak interval array
     """
-	rri_time = np.cumsum(rri) / 1000.0
-	time_rri = rri_time - rri_time[0]
-	time_rri_interp = np.arange(0, time_rri[-1], 1 / float(sf_up))
-	tck = splrep(time_rri, rri, s=0)
-	rri_interp = splev(time_rri_interp, tck, der=0)
-	return rri_interp
+    rri_time = np.cumsum(rri) / 1000.0
+    time_rri = rri_time - rri_time[0]
+    time_rri_interp = np.arange(0, time_rri[-1], 1 / float(sf_up))
+    tck = splrep(time_rri, rri, s=0)
+    rri_interp = splev(time_rri_interp, tck, der=0)
+    return rri_interp
+
 
 def get_rr(sig, fs, preprocess=True):
     if preprocess:
-        sig = preprocess_signal(sig,fs)
+        sig = preprocess_signal(sig, fs)
 
     # R-R peaks detection
     rr, _ = find_peaks(sig, distance=40, height=0.5)
@@ -66,17 +69,17 @@ def get_rr(sig, fs, preprocess=True):
     # filt = BandpassFilter(band_type='bessel', fs=fs)
     # filtered_segment = filt.signal_highpass_filter(edr, cutoff=hp_cutoff_order[0], order=hp_cutoff_order[1])
     # filtered_segment = filt.signal_lowpass_filter(filtered_segment, cutoff=lp_cutoff_order[0], order=lp_cutoff_order[1])
-    filtered_segment = preprocess_signal(edr,fs,highpass=2,lowpass=50)
+    filtered_segment = preprocess_signal(edr, fs, highpass=2, lowpass=50)
 
     # Find respiratory peaks
     resp_peaks, _ = find_peaks(filtered_segment, height=0, distance=sf_up)
 
     # Convert to seconds
     resp_peaks = resp_peaks
-    resp_peaks_diff = np.diff(resp_peaks) / sf_up
+    # resp_peaks_diff = np.diff(resp_peaks) / sf_up
 
     print(resp_peaks)
-    breath_rate = 60/np.diff(resp_peaks)
+    breath_rate = 60 / np.diff(resp_peaks)
     print(breath_rate)
     print(len(breath_rate))
     #

@@ -38,13 +38,13 @@ def calculate_power(freq, pow, fmin, fmax):
         pow = np.mean(pow, axis=1)
 
     band = pow[(freq >= fmin and freq < fmax)]
-    band_power = np.sum(band)/(2*np.power(len(pow), 2))
+    band_power = np.sum(band) / (2 * np.power(len(pow), 2))
 
     return band_power
 
 
-def get_interpolated_data(ts_rr, bpm_list, sampling_frequency,
-                          interpolation_method="linear"):
+def get_interpolated_nn(ts_rr, bpm_list, sampling_frequency,
+                        interpolation_method="linear"):
     """
     Method to interpolate the outlier hr data
 
@@ -142,9 +142,9 @@ def calculate_psd(rr_intervals, method='welch',
     ts_rr, bpm_list = get_time_and_bpm(rr_intervals)
 
     if method == 'welch':
-        nni_interpolation = get_interpolated_data(ts_rr,
-                                                  bpm_list,
-                                                  hr_sampling_frequency)
+        nni_interpolation = get_interpolated_nn(ts_rr,
+                                                bpm_list,
+                                                hr_sampling_frequency)
         # ---------- Remove DC Component ---------- #
         nni_normalized = nni_interpolation - np.mean(nni_interpolation)
 
@@ -155,7 +155,7 @@ def calculate_psd(rr_intervals, method='welch',
                                  nfft=4096)
 
     elif method == 'lomb':
-        freq = np.linspace(0, hr_sampling_frequency, 2**8)
+        freq = np.linspace(0, hr_sampling_frequency, 2 ** 8)
         a_frequencies = np.asarray(2 * np.pi / freq)
         psd = signal.lombscargle(ts_rr, rr_intervals, a_frequencies,
                                  normalize=True)

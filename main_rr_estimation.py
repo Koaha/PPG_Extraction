@@ -1,14 +1,15 @@
-from mne.filter import filter_data, resample
+from mne.filter import resample
 
-import scipy
 import numpy as np
 import pandas as pd
-from RRest.estimate_rr import ARM, PKS,PZX,CtO, CtA, \
-    Interpolate_RR,AR_RR,ARM,ARP,WCH
+# from RRest.estimate_rr import ARM, PKS, PZX, CtO, CtA, \
+#     Interpolate_RR, AR_RR, ARM, ARP, WCH
+from RRest.estimate_rr import ARM
 
-train_data = np.loadtxt('dataset/Khoa1waves.asc', dtype=None, delimiter='\t',skiprows=2)
-df = pd.DataFrame(train_data,columns=["Time","ECG1","Pleth","Resp"])
-#Prepare filter and filter signal
+
+train_data = np.loadtxt('dataset/Khoa1waves.asc', dtype=None, delimiter='\t', skiprows=2)
+df = pd.DataFrame(train_data, columns=["Time", "ECG1", "Pleth", "Resp"])
+# Prepare filter and filter signal
 
 # Load and preprocess data
 df_ecg = np.array(df["ECG1"])
@@ -26,8 +27,8 @@ ecg = resample(ecg, dsf)
 # Select only a 60 sec window - with the frequency is sf = 100
 window = 60
 start = 1000
-ecg = ecg[int(start*sf):int((start+window)*sf)]
+ecg = ecg[int(start * sf):int((start + window) * sf)]
 
 # resp = CtO.get_rr(ecg,sf)
-resp = ARM.get_rr(ecg,sf)
+resp = ARM.get_rr(ecg, sf)
 print(resp)
