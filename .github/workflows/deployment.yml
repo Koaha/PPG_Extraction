@@ -38,8 +38,9 @@ jobs:
     - name: Upload coverage to Codecov
       run: |
         curl -Os https://uploader.codecov.io/latest/linux/codecov
-                chmod +x codecov
-                ./codecov -t ${CODECOV_TOKEN}
+#        find . -iregex "codecov.*"
+        chmod +x codecov
+        ./codecov -t ${CODECOV_TOKEN}
     - uses: codecov/codecov-action@v2
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
@@ -47,7 +48,7 @@ jobs:
         version: "v0.1.15"
         env_vars: OS,PYTHON
         fail_ci_if_error: true
-        files: ./coverage1.xml,./coverage2.xml
+#        files: ./coverage1.xml,./coverage2.xml
         flags: unittests
         name: codecov-umbrella
         path_to_write_report: ./coverage/codecov_report.txt
