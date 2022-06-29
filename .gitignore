@@ -6,3 +6,4 @@ bidmc_csv/*
 RRest/__pycache__/*
 .pytest_cache/*
 RRest.egg-info/*
+.coverage
