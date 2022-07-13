@@ -110,15 +110,15 @@ def plot_spectrogram_librosa(s,template_size=100):
 def plot_spectrogram_scipy(data,
                            fs=100,window_size=4,
                            spec_file_name = 'spec',
+                           nfft=None,noverlap=None,
                            plot_image=False
                            ):
     window = np.hanning(window_size)
     fig, ax = plt.subplots()
 
-    f, t, Sxx = spectrogram(np.array(data),
-                            nfft=80,
-                            nperseg=window_size,
-                            fs=fs, window=window)
+    f, t, Sxx = \
+        spectrogram(np.array(data),nfft=nfft,nperseg=window_size,
+                    fs=fs, noverlap=noverlap,window=window)
     if plot_image:
         color_norm = matplotlib.colors.LogNorm(vmin=Sxx.min(), vmax=Sxx.max())
         pc = ax.pcolormesh(t, f, Sxx, norm=color_norm, cmap='inferno')
@@ -139,6 +139,14 @@ def get_template(template_type=1):
         reference = ppg_absolute_dual_skewness_template(template_size)
     return reference
 
+
+    # 1-beat      beat_length                         beat_length/fs(s)
+    # r-beat      fs                                  1(s)
+    #
+    # after scale
+    # 1-beat      template_size                       beat_length/fs(s)
+    #             template_size/(beat_length/fs)      1s
+
 for file_name in tqdm(good_files[3:4]):
     file_path = os.path.join(PPG_FOLDER,file_name)
     ppg_stable = np.array(pd.read_csv(os.path.join(os.getcwd(), file_path), header=None)).reshape(-1)
@@ -148,11 +156,13 @@ for file_name in tqdm(good_files[3:4]):
     beats = [ppg_stable[trough_milestones[i]:
                         trough_milestones[i+1]] for i in range(len(trough_milestones)-1)]
 
+    fs = 100
     template_size = 100
-    template_type = 1
+    template_type = 3
     resampling = []
     resampling_ref = []
     for beat in beats:
+        beat_length = len(beat)
         beat = resample(beat, template_size)
         scaler = MinMaxScaler()
         beat = scaler.fit_transform(beat.reshape(-1, 1)).reshape(-1)
@@ -160,33 +170,70 @@ for file_name in tqdm(good_files[3:4]):
         reference = get_template(template_type)
         resampling_ref = resampling_ref + list(reference)
 
-    f, t, Sxx = plot_spectrogram_scipy(beat)
+        f, t, Sxx = plot_spectrogram_scipy(beat, nfft=8096,
+                                           noverlap = 2,
+                                           fs= int(template_size/(beat_length/fs)))
 
-    f_ref, t_ref, Sxx_ref = plot_spectrogram_scipy(reference)
-
-    # Sxx_diff = np.abs(np.log(Sxx_ref)-np.log(Sxx))
-    Sxx_diff = np.abs((Sxx_ref) - (Sxx))
-
-    # fig, ax = plt.subplots()
-    # color_norm = matplotlib.colors.LogNorm(vmin=Sxx_diff.min(), vmax=Sxx_diff.max())
-    # pc = ax.pcolormesh(t, f, Sxx_diff, norm=color_norm, cmap='inferno')
-    # ax.set_ylabel('Frequency')
-    # ax.set_xlabel('Time')
-    # fig.colorbar(pc)
-    # fig.show()
+        f_ref, t_ref, Sxx_ref = \
+            plot_spectrogram_scipy(reference,nfft=8096,
+                                   noverlap = 2,
+                                    fs= int(template_size/(beat_length/fs)))
 
 
-    #==============================================================
+        # scale beat
+        f = f[f < 5]
+        f_ref = f_ref[f_ref < 5]
 
-    # x, y = np.meshgrid(np.linspace(0, 10, 200), np.linspace(0, 10))
-    # y += 2 * np.sin(x * 2 * np.pi / 10)
-    # z = np.exp(-x / 10)
+        beat_resample_length = int(len(t)*beat_length/fs)
+        beat = resample(beat,beat_resample_length)
+        scaler = MinMaxScaler(feature_range=(min(f), max(f)))
+        beat = scaler.fit_transform(beat.reshape(-1, 1)).reshape(-1)
+
+        # scale beat
+        reference = resample(reference, beat_resample_length)
+        scaler = MinMaxScaler(feature_range=(min(f_ref), max(f_ref)))
+        reference = scaler.fit_transform(reference.reshape(-1, 1)).reshape(-1)
+
+        t = t[:len(beat)]
+        Sxx = Sxx[:len(f), :len(beat)]
+
+        t_ref = t_ref[:len(reference)]
+        Sxx_ref = Sxx_ref[:len(f_ref), :len(reference)]
+
+        Sxx_diff = np.abs((Sxx_ref) - (Sxx))
+
 
     fig = go.Figure()
     fig.add_trace(go.Heatmap(x=t,
-                               y=f,
-                               z=Sxx_diff ))
-    fig.add_trace()
+                             y=f,
+                             z=np.log(Sxx_diff)))
+    fig.add_trace(go.Scatter(
+        x=t,
+        y=beat
+    ))
+    fig.add_trace(go.Scatter(
+        x=t_ref,
+        y=reference
+    ))
     fig.show()
 
+    fig = go.Figure()
+    fig.add_trace(go.Heatmap(x=t,
+                             y=f,
+                             z=np.log(Sxx)))
+    fig.add_trace(go.Scatter(
+        x=t,
+        y=beat
+    ))
+    fig.show()
+
+    fig = go.Figure()
+    fig.add_trace(go.Heatmap(x=t_ref,
+                             y=f_ref,
+                             z=np.log(Sxx_ref)))
+    fig.add_trace(go.Scatter(
+        x=t_ref,
+        y=reference
+    ))
+    fig.show()
     print("done")
