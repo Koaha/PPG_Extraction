@@ -92,10 +92,11 @@ def ppg_absolute_dual_skewness_template(width, e_1=1,
     p_1 = skew_func(x, e_1, w_1, a)
     p_2 = skew_func(x, e_2, w_2, a)
     p_ = np.max([p_1, p_2], axis=0)
-    sig_scale = MinMaxScaler().fit_transform(np.array(p_).reshape(-1, 1))
-    return sig_scale.reshape(-1)
+    sig_scale = MinMaxScaler().fit_transform(np.array(p_).reshape(-1, 1)).reshape(-1)
+    sig_out = resample(sig_scale,width)
+    return sig_out
 
-
+from scipy.signal import resample
 def ppg_nonlinear_dynamic_system_template(width):
     """
     EXPOSE
@@ -127,7 +128,7 @@ def ppg_nonlinear_dynamic_system_template(width):
     local_minima = argrelextrema(np.array(x2_list), np.less)[0]
     s = np.array(x2_list[local_minima[-2]:local_minima[-1] + 1])
 
-    rescale_signal = squeeze_template(s, width)
+    rescale_signal = resample(s,width)
 
     window = signal.windows.cosine(len(rescale_signal), 0.5)
     signal_data_tapered = np.array(window) * (rescale_signal - min(rescale_signal))

@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 from scipy import signal
 
-from RRest.common.band_filter import BandpassFilter
+from RRest.preprocess.band_filter import BandpassFilter
 from RRest.common.generate_template import ecg_dynamic_template
 import warnings
 from ecgdetectors import Detectors, panPeakDetect
