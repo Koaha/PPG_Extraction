@@ -145,7 +145,7 @@ def get_critical_points(s):
                     line=dict(width=2,color='DarkSlateGrey'))
     ))
 
-    # fig.show()
+    fig.show()
 
     return np.sort(critical_points)
 
@@ -164,7 +164,7 @@ for file_name in tqdm(good_files[:15]):
 
 
     template_size = 100
-    template_type = 2
+    template_type = 3 #optimal 2
     resampling = []
     resampling_ref = []
     beat_list = []
@@ -190,10 +190,59 @@ for file_name in tqdm(good_files[:15]):
                                            noverlap = 2,
                                            fs= int(template_size/(beat_length/fs)))
 
-    f_ref, t_ref, Sxx_ref = \
-    plot_spectrogram_scipy(reference,nfft=8096,
-                                   noverlap = 2,
-                                    fs= int(template_size/(beat_length/fs)))
+
+    D = librosa.stft(ppg_stable)
+    D_harmonic, D_percussive = librosa.decompose.hpss(D)
+
+    rp = np.max(np.abs(D))
+
+    fig, ax = plt.subplots(nrows=3, sharex=True, sharey=True)
+
+    img = librosa.display.specshow(librosa.amplitude_to_db(np.abs(D), ref=rp),
+                                   y_axis='log', x_axis='time', ax=ax[0])
+    ax[0].set(title='Full spectrogram')
+    ax[0].label_outer()
+
+    librosa.display.specshow(librosa.amplitude_to_db(np.abs(D_harmonic), ref=rp),
+                             y_axis='log', x_axis='time', ax=ax[1])
+    ax[1].set(title='Harmonic spectrogram')
+    ax[1].label_outer()
+
+    librosa.display.specshow(librosa.amplitude_to_db(np.abs(D_percussive), ref=rp),
+                             y_axis='log', x_axis='time', ax=ax[2])
+    ax[2].set(title='Percussive spectrogram')
+    fig.colorbar(img, ax=ax)
+
+    # f_ref, t_ref, Sxx_ref = \
+    # plot_spectrogram_scipy(reference,nfft=8096,
+    #                                noverlap = 2,
+    #                                 fs= int(template_size/(beat_length/fs)))
+    #
+    # D, wp = librosa.sequence.dtw(beat,reference)
+    # dtw_cost = np.mean([D[i][j] for i,j in zip(wp[:,1],wp[:,0])])
+    # print(dtw_cost)
+    # fig, ax = plt.subplots(nrows=2, sharex=True)
+    # img = librosa.display.specshow(D, x_axis='frames', y_axis='frames', ax=ax[0])
+    # ax[0].set(title='DTW cost = '+str(dtw_cost), xlabel='Noisy sequence', ylabel='Target')
+    # ax[0].plot(wp[:, 1], wp[:, 0], label='Optimal path', color='y')
+    # ax[0].legend()
+    # fig.colorbar(img, ax=ax[0])
+    # ax[1].plot(D[-1, :] / wp.shape[0])
+    # ax[1].set(xlim=[0, len(reference)], ylim=[0, 2], title='Matching cost function = '+str(np.sum(D[-1, :] / wp.shape[0])))
+    fig.show()
+
+
+    # from sklearn.metrics.pairwise import rbf_kernel
+    # similarity_matrix = rbf_kernel(beat.reshape(-1,1),reference.reshape(-1,1))
+    # L_score, L_path = librosa.sequence.rqa(similarity_matrix)
+    #
+    # fig, ax = plt.subplots(ncols=2)
+    # librosa.display.specshow(L_score, x_axis='frames', y_axis='frames', ax=ax[0])
+    # ax[0].set(title='Alignment score matrix')
+    # ax[0].plot(L_path[:, 1], L_path[:, 0], label='Optimal path', color='c')
+    # ax[0].legend()
+    # ax[0].label_outer()
+    # fig.show()
 
     xsim = segment.cross_similarity(beat,reference,mode='distance')
     xsim_aff = librosa.segment.cross_similarity(beat,reference, mode='affinity')
@@ -275,8 +324,11 @@ for file_name in tqdm(good_files[:15]):
     ))
     fig.add_trace(go.Scatter(
         x=t_ref,
-        y=reference
+        y=reference,
     ))
+    fig.update_layout(
+        title='dtw_cost = '+str(dtw_cost)
+    )
     # fig.show()
 
     # fig = go.Figure()

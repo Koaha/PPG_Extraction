@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from RRest.preprocess import BandpassFilter
+from RRest.preprocess.band_filter import BandpassFilter
 from scipy import signal
 import plotly.express as px
 
