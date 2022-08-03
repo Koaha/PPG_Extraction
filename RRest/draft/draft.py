@@ -218,9 +218,9 @@ for file_name in tqdm(good_files[:15]):
     #                                noverlap = 2,
     #                                 fs= int(template_size/(beat_length/fs)))
     #
-    # D, wp = librosa.sequence.dtw(beat,reference)
-    # dtw_cost = np.mean([D[i][j] for i,j in zip(wp[:,1],wp[:,0])])
-    # print(dtw_cost)
+    D, wp = librosa.sequence.dtw(beat,reference)
+    dtw_cost = np.mean([D[i][j] for i,j in zip(wp[:,1],wp[:,0])])
+    print(dtw_cost)
     # fig, ax = plt.subplots(nrows=2, sharex=True)
     # img = librosa.display.specshow(D, x_axis='frames', y_axis='frames', ax=ax[0])
     # ax[0].set(title='DTW cost = '+str(dtw_cost), xlabel='Noisy sequence', ylabel='Target')
