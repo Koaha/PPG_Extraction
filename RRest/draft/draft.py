@@ -213,11 +213,11 @@ for file_name in tqdm(good_files[:15]):
     ax[2].set(title='Percussive spectrogram')
     fig.colorbar(img, ax=ax)
 
-    # f_ref, t_ref, Sxx_ref = \
-    # plot_spectrogram_scipy(reference,nfft=8096,
-    #                                noverlap = 2,
-    #                                 fs= int(template_size/(beat_length/fs)))
-    #
+    f_ref, t_ref, Sxx_ref = \
+    plot_spectrogram_scipy(reference,nfft=8096,
+                                   noverlap = 2,
+                                    fs= int(template_size/(beat_length/fs)))
+
     D, wp = librosa.sequence.dtw(beat,reference)
     dtw_cost = np.mean([D[i][j] for i,j in zip(wp[:,1],wp[:,0])])
     print(dtw_cost)
