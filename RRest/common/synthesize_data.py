@@ -10,7 +10,8 @@ from sklearn.preprocessing import MinMaxScaler
 
 def synthesize_nonlinear_dynamic_system(duration, trend_frequency=None,
                                         noise_scale=0.05, noise_mean=0.2,
-                                        noise_density=0.2,extend_rate=0.2):
+                                        noise_density=0.2,extend_rate=0.2,
+                                        resample_rate=2):
     """
     EXPOSE
     :param width:
@@ -37,8 +38,8 @@ def synthesize_nonlinear_dynamic_system(duration, trend_frequency=None,
         x2 = x2 + dx2 * dt
 
         if np.random.rand()<extend_rate:
-            if np.random.rand()<0.05:
-                num = np.random.randint(8,15)
+            if np.random.rand()<extend_rate:
+                num = np.random.randint(8,14)
             else:
                 num = np.random.randint(4, 8)
             x2_ = (signal.resample([x2_list[-1],x2],num,signal.windows.hamming(10))[0]).tolist()[:int(num/2)]
@@ -64,9 +65,9 @@ def synthesize_nonlinear_dynamic_system(duration, trend_frequency=None,
 
     processed_sig = signal.detrend(trend_list)
     bandFilter = BandpassFilter()
-    processed_sig = bandFilter.signal_lowpass_filter(processed_sig,5)
+    processed_sig = bandFilter.signal_lowpass_filter(processed_sig,4)
     processed_sig = bandFilter.signal_highpass_filter(processed_sig, 0.5)
-    processed_sig = signal.resample(processed_sig, int(len(processed_sig) / 1.8))
+    processed_sig = signal.resample(processed_sig, int(len(processed_sig) / resample_rate))
 
     scaler = MinMaxScaler(
         feature_range=(min(processed_sig), max(processed_sig))
@@ -108,7 +109,7 @@ def synthesize_nonlinear_dynamic_system(duration, trend_frequency=None,
 
     fig.show()
 
-    peak_detection = signal.argrelmax()
+    # peak_detection = signal.argrelmax()
 
 
     print("ahihi")
@@ -128,7 +129,8 @@ def get_flat(x,flat):
     flat += ast.literal_eval(x)
 
 synthesize_nonlinear_dynamic_system(duration=30,trend_frequency=200,
-                                    noise_scale = 0.05, noise_mean = 0.15,
-                                    noise_density = 0.25
+                                    noise_scale = 0.1, noise_mean = 0.5,
+                                    noise_density = 0.3,extend_rate=0.2,
+                                    resample_rate = 2.5
                                     )
 
