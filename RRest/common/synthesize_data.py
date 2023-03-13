@@ -211,163 +211,163 @@ def plot_processed_signal(processed_sig):
     return
 
 
-
-def extract_ppg_features(fname,patient_id,analysis_duration,feat_PATH):
-    # file_in = os.path.join(PATH, fname)
-
-    feats = {}
-
-    feats['start_time'] = []
-    feats['end_time'] = []
-    feats['systolic_area_list'] = []
-    feats['diastolic_area_list'] = []
-    feats['systolic_area_ratio_list'] = []
-    feats['ratio_con_sys'] = []
-    feats['ratio_con_dias'] = []
-    feats['amplitude_sys'] = []
-    feats['amplitude_dias'] = []
-    feats['rr'] = []
-
-
-    df_sqis = pd.DataFrame()
-    feats['Sxx_list'] = []
-    feat_dict = {}
-    event_time_start = []
-    event_time_end = []
-    df_beat = []
-    df_beat_spo2 = []
-    ppg_files = []
-    for idx,ppg_file in enumerate(tqdm(ppg_files)):
-        try:
-            df_ppg =  pd.read_csv(os.path.join(ppg_path,ppg_file),usecols=range(1,4))
-            if dtotal_duration == 0:
-                df_segment = df_ppg
-            else:
-                df_segment = df_segment.append(df_ppg)
-            format = "%Y-%m-%d %H:%M:%S.%f"
-
-            # start_time_converted = datetime.strptime(df_ppg['timestamps'].iloc[0], format)
-            current_start_time = datetime.strptime(df_ppg['timestamps'].iloc[0], format)
-            end_start_time = datetime.strptime(df_ppg['timestamps'].iloc[-1], format)
-
-            next_ppg = pd.read_csv(os.path.join(ppg_path,ppg_files[idx+1]),usecols=range(1,3))
-            next_start_time = datetime.strptime(next_ppg['timestamps'].iloc[0], format)
-
-            total_duration = total_duration + np.round((next_start_time-current_start_time).total_seconds())
-            if total_duration >= analysis_duration:
-                feat_dict,df_sqis,beat = get_all_features((df_segment[["timestamps","PLETH"]]),feats, df_sqis)
-
-                start = df_segment['timestamps'].iloc[0]
-                end = df_segment['timestamps'].iloc[-1]
-                event_time_start.append(start)
-                event_time_end.append(end)
-                df_beat.append(beat)
-
-                beat_spo2 = df_segment["SPO2"]
-                df_beat_spo2.append(np.min(beat_spo2))
-
-                # critical_points = signal.find_peaks(beat)[0]
-                # if len(critical_points)>1:
-                #     if (beat[critical_points[0]] < beat[critical_points[1]]):
-                #         start = df_segment['timestamps'].iloc[0]
-                #         end = df_segment['timestamps'].iloc[-1]
-                #         event_time_start.append(start)
-                #         event_time_end.append(end)
-
-                plt.plot(beat)
-
-                detector = PeakDetector(wave_type='ppg')
-                peak_list, trough_list = detector.ppg_detector(np.array(df_segment["PLETH"]))
-                if len(peak_list) < 2:
-                    warnings.warn("Peak Detector cannot find more than 2 peaks to process")
-                    peak_list = []
-                rr_list = np.diff(peak_list) * (1000 / 100)  # 1000 milisecond
-                rr_list = list(map(int,rr_list))
-                feats['rr'].append(rr_list)
-                feats['start_time'].append(df_segment["timestamps"].iloc[0])
-                feats['end_time'].append(df_segment["timestamps"].iloc[-1])
-                total_duration = 0
-        except Exception as err:
-            print(err)
-
-
-    # apply covariance outlier detection
-    # ee = EllipticEnvelope(contamination=0.01)
-    # yhat = ee.fit_predict(df_beat)
-    lof = LocalOutlierFactor()
-    oneclass_svm = OneClassSVM()
-    gmm = GaussianMixture(n_components=2)
-    knn = KMeans(n_clusters=2)
-    isolation_forest = IsolationForest()
-    try:
-        yhat_lof = lof.fit_predict(np.array(df_beat))
-        yhat_svm = oneclass_svm.fit_predict(np.array(df_beat))
-        yhat_iso = isolation_forest.fit_predict(np.array(df_beat))
-        yhat_gmm = gmm.fit_predict(np.array(df_beat))
-        yhat_knn = knn.fit_predict(np.array(df_beat))
-
-    except Exception as err:
-        print(err)
-        yhat_lof = np.ones(len(df_beat))
-        yhat_svm = np.ones(len(df_beat))
-        yhat_iso = np.ones(len(df_beat))
-        yhat_gmm = np.ones(len(df_beat))
-        yhat_knn = np.ones(len(df_beat))
-
-    mask_lof = yhat_lof == -1
-    mask_svm = yhat_svm == -1
-    mask_iso = yhat_iso == -1
-
-    values_gmm,count_gmm = np.unique(yhat_gmm,return_counts=True)
-    if len(values_gmm) < 2:
-        mask_gmm = yhat_gmm == np.inf
-    else:
-        outlier_gmm_value = values_gmm[np.argmin(count_gmm)]
-        mask_gmm = yhat_gmm == outlier_gmm_value
-
-    values_knn, count_knn = np.unique(yhat_knn, return_counts=True)
-    if len(values_gmm) < 2:
-        mask_knn = yhat_knn == np.inf
-    else:
-        outlier_knn_value = values_knn[np.argmin(count_knn)]
-        mask_knn = yhat_knn == outlier_knn_value
-
-    mask = mask_lof & mask_iso & (mask_gmm | mask_knn | mask_svm)
-    # mask = (mask_gmm & mask_knn)
-
-    log_idx = np.arange(len(df_beat))[mask]
-
-    sus_spo2 = np.array(df_beat_spo2)[log_idx]
-    mask_sus = sus_spo2 < 96
-    log_idx = log_idx[mask_sus]
-    # ng_spo2_log_idx =
-
-    img_location = os.path.join(img_PATH, ".".join(fname.split("."))[:-2] + ".png")
-    if not os.path.exists(os.path.join(img_PATH, "logs")):
-        os.makedirs(os.path.join(img_PATH, "logs"))
-    img_log_file = os.path.join(img_PATH,"logs", ".".join(fname.split("."))[:-2] + ".csv")
-    df_log = pd.DataFrame()
-    df_log['start_time'] = np.array(event_time_start)[log_idx]
-    df_log['end_time'] = np.array(event_time_end)[log_idx]
-    df_log['spo2'] = np.array(df_beat_spo2)[log_idx]
-    plt.savefig(img_location)
-    df_log.to_csv(img_log_file)
-
-    outlier_img_location = os.path.join(img_PATH, "logs",".".join(fname.split("."))[:-2] + ".png")
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    for idx in log_idx:
-        outlier_beat = df_beat[idx]
-        label = str(np.array(event_time_start)[idx]) +" - "+ str(np.array(df_beat_spo2)[idx])
-        ax.plot(outlier_beat,label = label)
-    lgd = ax.legend(loc='upper center',bbox_to_anchor=(0.5,-0.5),ncol=2)
-    fig.savefig(outlier_img_location,bbox_extra_artist=(lgd,),bbox_inches='tight')
-    pd.DataFrame(feats).to_csv(os.path.join(feat_PATH, ".".join(fname.split("."))[:-2] + "rr.csv"))
-
-    # feat_dict.update(df_sqis.to_dict('list'))
-    # pd.DataFrame(feat_dict).to_csv(os.path.join(feat_PATH,".".join(fname.split("."))[:-2]+"feats.csv"))
-
-    return
+#
+# def extract_ppg_features(fname,patient_id,analysis_duration,feat_PATH):
+#     # file_in = os.path.join(PATH, fname)
+#
+#     feats = {}
+#
+#     feats['start_time'] = []
+#     feats['end_time'] = []
+#     feats['systolic_area_list'] = []
+#     feats['diastolic_area_list'] = []
+#     feats['systolic_area_ratio_list'] = []
+#     feats['ratio_con_sys'] = []
+#     feats['ratio_con_dias'] = []
+#     feats['amplitude_sys'] = []
+#     feats['amplitude_dias'] = []
+#     feats['rr'] = []
+#
+#
+#     df_sqis = pd.DataFrame()
+#     feats['Sxx_list'] = []
+#     feat_dict = {}
+#     event_time_start = []
+#     event_time_end = []
+#     df_beat = []
+#     df_beat_spo2 = []
+#     ppg_files = []
+#     for idx,ppg_file in enumerate(tqdm(ppg_files)):
+#         try:
+#             df_ppg =  pd.read_csv(os.path.join(ppg_path,ppg_file),usecols=range(1,4))
+#             if total_duration == 0:
+#                 df_segment = df_ppg
+#             else:
+#                 df_segment = df_segment.append(df_ppg)
+#             format = "%Y-%m-%d %H:%M:%S.%f"
+#
+#             # start_time_converted = datetime.strptime(df_ppg['timestamps'].iloc[0], format)
+#             current_start_time = datetime.strptime(df_ppg['timestamps'].iloc[0], format)
+#             end_start_time = datetime.strptime(df_ppg['timestamps'].iloc[-1], format)
+#
+#             next_ppg = pd.read_csv(os.path.join(ppg_path,ppg_files[idx+1]),usecols=range(1,3))
+#             next_start_time = datetime.strptime(next_ppg['timestamps'].iloc[0], format)
+#
+#             total_duration = total_duration + np.round((next_start_time-current_start_time).total_seconds())
+#             if total_duration >= analysis_duration:
+#                 feat_dict,df_sqis,beat = get_all_features((df_segment[["timestamps","PLETH"]]),feats, df_sqis)
+#
+#                 start = df_segment['timestamps'].iloc[0]
+#                 end = df_segment['timestamps'].iloc[-1]
+#                 event_time_start.append(start)
+#                 event_time_end.append(end)
+#                 df_beat.append(beat)
+#
+#                 beat_spo2 = df_segment["SPO2"]
+#                 df_beat_spo2.append(np.min(beat_spo2))
+#
+#                 # critical_points = signal.find_peaks(beat)[0]
+#                 # if len(critical_points)>1:
+#                 #     if (beat[critical_points[0]] < beat[critical_points[1]]):
+#                 #         start = df_segment['timestamps'].iloc[0]
+#                 #         end = df_segment['timestamps'].iloc[-1]
+#                 #         event_time_start.append(start)
+#                 #         event_time_end.append(end)
+#
+#                 plt.plot(beat)
+#
+#                 detector = PeakDetector(wave_type='ppg')
+#                 peak_list, trough_list = detector.ppg_detector(np.array(df_segment["PLETH"]))
+#                 if len(peak_list) < 2:
+#                     warnings.warn("Peak Detector cannot find more than 2 peaks to process")
+#                     peak_list = []
+#                 rr_list = np.diff(peak_list) * (1000 / 100)  # 1000 milisecond
+#                 rr_list = list(map(int,rr_list))
+#                 feats['rr'].append(rr_list)
+#                 feats['start_time'].append(df_segment["timestamps"].iloc[0])
+#                 feats['end_time'].append(df_segment["timestamps"].iloc[-1])
+#                 total_duration = 0
+#         except Exception as err:
+#             print(err)
+#
+#
+#     # apply covariance outlier detection
+#     # ee = EllipticEnvelope(contamination=0.01)
+#     # yhat = ee.fit_predict(df_beat)
+#     lof = LocalOutlierFactor()
+#     oneclass_svm = OneClassSVM()
+#     gmm = GaussianMixture(n_components=2)
+#     knn = KMeans(n_clusters=2)
+#     isolation_forest = IsolationForest()
+#     try:
+#         yhat_lof = lof.fit_predict(np.array(df_beat))
+#         yhat_svm = oneclass_svm.fit_predict(np.array(df_beat))
+#         yhat_iso = isolation_forest.fit_predict(np.array(df_beat))
+#         yhat_gmm = gmm.fit_predict(np.array(df_beat))
+#         yhat_knn = knn.fit_predict(np.array(df_beat))
+#
+#     except Exception as err:
+#         print(err)
+#         yhat_lof = np.ones(len(df_beat))
+#         yhat_svm = np.ones(len(df_beat))
+#         yhat_iso = np.ones(len(df_beat))
+#         yhat_gmm = np.ones(len(df_beat))
+#         yhat_knn = np.ones(len(df_beat))
+#
+#     mask_lof = yhat_lof == -1
+#     mask_svm = yhat_svm == -1
+#     mask_iso = yhat_iso == -1
+#
+#     values_gmm,count_gmm = np.unique(yhat_gmm,return_counts=True)
+#     if len(values_gmm) < 2:
+#         mask_gmm = yhat_gmm == np.inf
+#     else:
+#         outlier_gmm_value = values_gmm[np.argmin(count_gmm)]
+#         mask_gmm = yhat_gmm == outlier_gmm_value
+#
+#     values_knn, count_knn = np.unique(yhat_knn, return_counts=True)
+#     if len(values_gmm) < 2:
+#         mask_knn = yhat_knn == np.inf
+#     else:
+#         outlier_knn_value = values_knn[np.argmin(count_knn)]
+#         mask_knn = yhat_knn == outlier_knn_value
+#
+#     mask = mask_lof & mask_iso & (mask_gmm | mask_knn | mask_svm)
+#     # mask = (mask_gmm & mask_knn)
+#
+#     log_idx = np.arange(len(df_beat))[mask]
+#
+#     sus_spo2 = np.array(df_beat_spo2)[log_idx]
+#     mask_sus = sus_spo2 < 96
+#     log_idx = log_idx[mask_sus]
+#     # ng_spo2_log_idx =
+#
+#     img_location = os.path.join(img_PATH, ".".join(fname.split("."))[:-2] + ".png")
+#     if not os.path.exists(os.path.join(img_PATH, "logs")):
+#         os.makedirs(os.path.join(img_PATH, "logs"))
+#     img_log_file = os.path.join(img_PATH,"logs", ".".join(fname.split("."))[:-2] + ".csv")
+#     df_log = pd.DataFrame()
+#     df_log['start_time'] = np.array(event_time_start)[log_idx]
+#     df_log['end_time'] = np.array(event_time_end)[log_idx]
+#     df_log['spo2'] = np.array(df_beat_spo2)[log_idx]
+#     plt.savefig(img_location)
+#     df_log.to_csv(img_log_file)
+#
+#     outlier_img_location = os.path.join(img_PATH, "logs",".".join(fname.split("."))[:-2] + ".png")
+#     fig = plt.figure()
+#     ax = fig.add_subplot(111)
+#     for idx in log_idx:
+#         outlier_beat = df_beat[idx]
+#         label = str(np.array(event_time_start)[idx]) +" - "+ str(np.array(df_beat_spo2)[idx])
+#         ax.plot(outlier_beat,label = label)
+#     lgd = ax.legend(loc='upper center',bbox_to_anchor=(0.5,-0.5),ncol=2)
+#     fig.savefig(outlier_img_location,bbox_extra_artist=(lgd,),bbox_inches='tight')
+#     pd.DataFrame(feats).to_csv(os.path.join(feat_PATH, ".".join(fname.split("."))[:-2] + "rr.csv"))
+#
+#     # feat_dict.update(df_sqis.to_dict('list'))
+#     # pd.DataFrame(feat_dict).to_csv(os.path.join(feat_PATH,".".join(fname.split("."))[:-2]+"feats.csv"))
+#
+#     return
 
 
 def combine_synthesize_data():
@@ -398,6 +398,5 @@ synthesize_nonlinear_dynamic_system(duration=30,trend_frequency=200,
                                     noise_density = 0.3,extend_rate=0.2,
                                     resample_rate = 2.5
                                     )
-
 
 
