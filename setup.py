@@ -7,7 +7,7 @@ setup(
     packages=find_packages(include=['RRest.*']),
     url='https://github.com/Koaha/RRest',
     install_reqs = parse_requirements('requirements.txt', session='deploy'),
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     license='MIT',
     author='Koha',
     author_email='',
