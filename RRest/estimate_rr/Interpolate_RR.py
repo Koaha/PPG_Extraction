@@ -2,21 +2,7 @@ from scipy.interpolate import splrep, splev
 from scipy.signal import detrend, find_peaks
 import numpy as np
 from RRest.preprocess.band_filter import BandpassFilter
-
-
-def preprocess_signal(sig, fs, filter_type="butterworth", highpass=0.1, lowpass=0.5, degree=1, cutoff=False,
-                      cutoff_quantile=0.9):
-    # Prepare and filter signal
-    hp_cutoff_order = [highpass, degree]
-    lp_cutoff_order = [lowpass, degree]
-    filt = BandpassFilter(band_type=filter_type, fs=fs)
-    filtered_segment = filt.signal_highpass_filter(sig, cutoff=hp_cutoff_order[0], order=hp_cutoff_order[1])
-    filtered_segment = filt.signal_lowpass_filter(filtered_segment, cutoff=lp_cutoff_order[0], order=lp_cutoff_order[1])
-    if cutoff:
-        cutoff = np.quantile(np.abs(filtered_segment), cutoff_quantile)
-        filtered_segment[np.abs(filtered_segment) < cutoff] = 0
-    return filtered_segment
-
+from RRest.preprocess.preprocess_signal import preprocess_signal
 
 # Interpolate and compute HR
 def interp_cubic_spline(rri, sf_up=4):
@@ -45,19 +31,20 @@ def interp_cubic_spline(rri, sf_up=4):
 
 
 def get_rr(sig, fs, preprocess=True):
+    ti = len(sig)/fs
     if preprocess:
         sig = preprocess_signal(sig, fs)
 
     # R-R peaks detection
-    rr, _ = find_peaks(sig, distance=40, height=0.5)
+    rr, _ = find_peaks(sig, distance=20, height=0.5)
     rr = (rr / fs) * 1000
     rri = np.diff(rr)
 
     sf_up = 4
     rri_interp = interp_cubic_spline(rri, sf_up)
     hr = 1000 * (60 / rri_interp)
-    print(hr)
-    print('Mean HR: %.2f bpm' % np.mean(hr))
+    # print(hr)
+    # print('Mean HR: %.2f bpm' % np.mean(hr))
 
     # Detrend and normalize
     edr = detrend(hr)
@@ -69,23 +56,24 @@ def get_rr(sig, fs, preprocess=True):
     # filt = BandpassFilter(band_type='bessel', fs=fs)
     # filtered_segment = filt.signal_highpass_filter(edr, cutoff=hp_cutoff_order[0], order=hp_cutoff_order[1])
     # filtered_segment = filt.signal_lowpass_filter(filtered_segment, cutoff=lp_cutoff_order[0], order=lp_cutoff_order[1])
-    filtered_segment = preprocess_signal(edr, fs, highpass=2, lowpass=50)
+    filtered_segment = preprocess_signal(edr, fs, highpass=2, lowpass=0.5)
 
     # Find respiratory peaks
     resp_peaks, _ = find_peaks(filtered_segment, height=0, distance=sf_up)
 
     # Convert to seconds
-    resp_peaks = resp_peaks
-    # resp_peaks_diff = np.diff(resp_peaks) / sf_up
-
-    print(resp_peaks)
-    breath_rate = 60 / np.diff(resp_peaks)
-    print(breath_rate)
-    print(len(breath_rate))
+    # resp_peaks = resp_peaks
+    # # resp_peaks_diff = np.diff(resp_peaks) / sf_up
+    #
+    # print(resp_peaks)
+    # breath_rate = 60 / np.diff(resp_peaks)
+    # print(breath_rate)
+    # print(len(breath_rate))
     #
     # # Plot the EDR waveform
     # plt.plot(filtered_segment, '-')
     # plt.plot(resp_peaks, filtered_segment[resp_peaks], 'o')
     # _ = plt.title('ECG derived respiration')
     # plt.show()
+    breath_rate = len(resp_peaks) * 60 / ti
     return breath_rate

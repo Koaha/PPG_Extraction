@@ -1,23 +1,11 @@
 import numpy as np
 from scipy import signal
-from RRest.preprocess.band_filter import BandpassFilter
+from RRest.preprocess.preprocess_signal import preprocess_signal
 
-
-def preprocess_signal(sig, fs, filter_type="butterworth", highpass=0.1, lowpass=0.5, degree=1, cutoff=False,
-                      cutoff_quantile=0.9):
-    # Prepare and filter signal
-    hp_cutoff_order = [highpass, degree]
-    lp_cutoff_order = [lowpass, degree]
-    filt = BandpassFilter(band_type=filter_type, fs=fs)
-    filtered_segment = filt.signal_highpass_filter(sig, cutoff=hp_cutoff_order[0], order=hp_cutoff_order[1])
-    filtered_segment = filt.signal_lowpass_filter(filtered_segment, cutoff=lp_cutoff_order[0], order=lp_cutoff_order[1])
-    if cutoff:
-        cutoff = np.quantile(np.abs(filtered_segment), cutoff_quantile)
-        filtered_segment[np.abs(filtered_segment) < cutoff] = 0
-    return filtered_segment
 
 
 def get_rr(sig, fs, preprocess=True):
+    ti = len(sig) / fs
     # Step 1 preprocess with butterworth filter - 0.1-0.5 -> depend on the device
     if preprocess:
         # pro_sig = preprocess_signal(sig, fs)
@@ -32,15 +20,17 @@ def get_rr(sig, fs, preprocess=True):
 
     # Step 3 define the local max threshold by taking the 0.75 quantile
     # Compute the subsequent local extrema differences
-    resp_markers = get_valid_rr(sig, local_min, local_max)
-    print(len(resp_markers))
+    rel_peaks, rel_troughs = get_valid_rr(sig, local_min, local_max)
+    # print(len(resp_markers))
+    return len(rel_peaks) * 60 / ti
+
 
 
 def get_valid_rr(sig, local_min, local_max):
     extrema_indices = np.sort(list(local_min) + list(local_max))
     extrema_differences = np.abs(np.diff(sig[extrema_indices]))
     # resp_markers = []
-    thres = np.quantile(extrema_differences, 0.75) * 0.3
+    thres = np.quantile(extrema_differences, 0.75)
 
     # Step 4 find the pair of subsequent extrema
     # find the min difference -> if differ < threshold-> split into 2

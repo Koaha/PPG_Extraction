@@ -1,23 +1,10 @@
 import numpy as np
 from scipy import signal
 from RRest.preprocess.band_filter import BandpassFilter
-
-
-def preprocess_signal(sig, fs, filter_type="butterworth",
-                      highpass=0.1, lowpass=0.25, degree=1,
-                      cutoff=False, cutoff_quantile=0.8):
-    hp_cutoff_order = [highpass, degree]
-    lp_cutoff_order = [lowpass, degree]
-    filt = BandpassFilter(band_type=filter_type, fs=fs)
-    filtered_segment = filt.signal_highpass_filter(sig, cutoff=hp_cutoff_order[0], order=hp_cutoff_order[1])
-    filtered_segment = filt.signal_lowpass_filter(filtered_segment, cutoff=lp_cutoff_order[0], order=lp_cutoff_order[1])
-    if cutoff:
-        cutoff = np.quantile(np.abs(filtered_segment), cutoff_quantile)
-        filtered_segment[np.abs(filtered_segment) < cutoff] = 0
-    return filtered_segment
-
+from RRest.preprocess.preprocess_signal import preprocess_signal
 
 def get_rr(sig, fs, preprocess=True):
+    ti = len(sig)/fs
     if preprocess:
         sig = preprocess_signal(sig, fs)
     local_max = signal.argrelmax(sig)[0]
@@ -59,7 +46,7 @@ def get_rr(sig, fs, preprocess=True):
 
     final_peaks = np.intersect1d(local_max[rel_peaks_indices], rel_extrema)
     # final_troughs = np.intersect1d(local_min[rel_troughs_indices], rel_extrema)
-    return final_peaks
+    return 60*len(final_peaks)/ti
 
 
 def get_sign(extrema_indices, trough_indices, peak_indices):

@@ -59,7 +59,8 @@ def plot_spectrogram_scipy(data,
                            fs=100,window_size=4,
                            spec_file_name = 'spec',
                            nfft=None,noverlap=None,
-                           plot_image=False
+                           plot_image=False,
+                           log_spectrogram = True
                            ):
     window = np.hanning(window_size)
     fig, ax = plt.subplots()
@@ -75,6 +76,10 @@ def plot_spectrogram_scipy(data,
         fig.colorbar(pc)
         fig.savefig(spec_file_name+'.png')
         fig.show()
+
+    if log_spectrogram:
+        Sxx = np.abs(Sxx)
+        Sxx[Sxx>0] = np.log(Sxx[Sxx>0])
 
     return f, t, Sxx
 
@@ -185,7 +190,7 @@ for file_name in tqdm(good_files[:15]):
     fs = 100
     beat_length = int(np.mean(beat_length_list))
     beat_list = np.array(beat_list)
-    beat = np.apply_along_axis(np.mean,axis=0,arr=beat_list)
+    beat = np.apply_along_axis(np.mean,axis=0,arr=beat_listddddd)
     f, t, Sxx = plot_spectrogram_scipy(beat, nfft=8096,
                                            noverlap = 2,
                                            fs= int(template_size/(beat_length/fs)))
@@ -263,6 +268,7 @@ for file_name in tqdm(good_files[:15]):
     Sxx_ref = Sxx_ref[:len(f_ref), :len(reference)]
 
     Sxx_diff = np.abs((Sxx_ref) - (Sxx))
+
 
 
     fig = go.Figure()

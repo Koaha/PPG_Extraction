@@ -1,34 +1,18 @@
-from mne.filter import resample
-
 import numpy as np
 import pandas as pd
-# from RRest.estimate_rr import ARM, PKS, PZX, CtO, CtA, \
-#     Interpolate_RR, AR_RR, ARM, ARP, WCH
-from RRest.estimate_rr import ARM
+from RRest.estimate_rr import PKS, PZX, CtO, CtA, \
+    Interpolate_RR, AR_RR, ARM, ARP, WCH
 
-
-train_data = np.loadtxt('dataset/Khoa1waves.asc', dtype=None, delimiter='\t', skiprows=2)
-df = pd.DataFrame(train_data, columns=["Time", "ECG1", "Pleth", "Resp"])
-# Prepare filter and filter signal
-
-# Load and preprocess data
-df_ecg = np.array(df["ECG1"])
-ecg = df_ecg[90000:508000]
-sf_ori = 300
-sf = 100
-
-dsf = sf / sf_ori
-ecg_resample = resample(ecg, dsf)
-ecg = resample(ecg, dsf)
-
-# filter is used later in the estimation
-# ecg = filter_data(ecg, sf, 2, 30, verbose=0)
-
-# Select only a 60 sec window - with the frequency is sf = 100
-window = 60
-start = 1000
-ecg = ecg[int(start * sf):int((start + window) * sf)]
-
-# resp = CtO.get_rr(ecg,sf)
-resp = ARM.get_rr(ecg, sf)
-print(resp)
+if __name__ == "__main__":
+    files = ['segment-009.csv','segment-010.csv','segment-011.csv']
+    rr_methods = [
+        ARM,PKS,CtO,CtA,PZX,ARP,Interpolate_RR,WCH
+    ]
+    for fname in files:
+        print(fname)
+        df = pd.read_csv(f'../dataset/{fname}')
+        sig = np.array(df['PLETH'])
+        fs = 100
+        for rr_method in rr_methods:
+            resp = rr_method.get_rr(sig,fs)
+            print(f"{rr_method.__name__}                 = {resp}")

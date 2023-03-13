@@ -5,7 +5,8 @@ from RRest.preprocess.band_filter import BandpassFilter
 from scipy.signal import detrend, resample
 
 
-def preprocess_signal(sig, fs, filter_type="butterworth", highpass=0.1, lowpass=0.5, degree=1, cutoff=False,
+def preprocess_signal(sig, fs, filter_type="butterworth", highpass=0.1,
+                      lowpass=0.5, degree=1, cutoff=False,
                       cutoff_quantile=0.9):
     # Prepare and filter signal
     hp_cutoff_order = [highpass, degree]
@@ -27,12 +28,12 @@ def find_spectral_peak(spectral_power, frequency):
     return len(spectral_peaks[0])
 
 
-# TODO
+# TODO convert pole to rate
 def get_rr(sig, fs, order=7, preprocess=True):
     if preprocess:
         sig = preprocess_signal(sig, fs)
     detrend(sig, overwrite_data=True)
-    sig = resample(sig)
+    sig = resample(sig,int(len(sig)/fs * 10))
 
     ar = arburg(sig, order)
     if len(ar) > 1:
@@ -43,8 +44,10 @@ def get_rr(sig, fs, order=7, preprocess=True):
     rr_range = [np.pi * -0.25, np.pi * 0.25]
     rel_pole_els = angles[np.where((angles > rr_range[0]) & (angles < rr_range[1]))]
 
-    model_angle = np.angle(rel_pole_els)
-    model_pole_mag = np.abs(poles)
+    # model_angle = np.angle(rel_pole_els)
+    pole_idx = np.where(angles == np.max(rel_pole_els))[0][0]
+    model_pole_mag = np.abs(poles[pole_idx])
     # select the pole with the greatest magnitude as the respiratory pole
-
-    return model_angle, model_pole_mag
+    # pole_idx = np.argmax(model_angle)
+    model_pole_mag = np.abs(poles[pole_idx])
+    return model_pole_mag
