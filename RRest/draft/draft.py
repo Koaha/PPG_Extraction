@@ -190,7 +190,7 @@ for file_name in tqdm(good_files[:15]):
     fs = 100
     beat_length = int(np.mean(beat_length_list))
     beat_list = np.array(beat_list)
-    beat = np.apply_along_axis(np.mean,axis=0,arr=beat_listddddd)
+    beat = np.apply_along_axis(np.mean,axis=0,arr=beat_list)
     f, t, Sxx = plot_spectrogram_scipy(beat, nfft=8096,
                                            noverlap = 2,
                                            fs= int(template_size/(beat_length/fs)))
